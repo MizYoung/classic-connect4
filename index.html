@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classroom Connect 4</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            color: #1e293b;
+            margin-bottom: 5px;
+            font-size: 2.5rem;
+        }
+
+        #status {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            border-radius: 20px;
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .turn-red { color: #ef4444; }
+        .turn-yellow { color: #eab308; }
+
+        #board {
+            background-color: #2563eb; /* Classic Blue Board */
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 12px;
+        }
+
+        .cell {
+            width: 70px;
+            height: 70px;
+            background-color: #f8fafc; /* Empty slot */
+            border-radius: 50%;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            box-shadow: inset 0 4px 6px rgba(0,0,0,0.15);
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+        }
+
+        .cell.red {
+            background-color: #ef4444;
+            box-shadow: inset 0 -6px 0 rgba(0,0,0,0.2);
+        }
+
+        .cell.yellow {
+            background-color: #eab308;
+            box-shadow: inset 0 -6px 0 rgba(0,0,0,0.2);
+        }
+
+        #reset {
+            margin-top: 25px;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            background-color: #1e293b;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #reset:hover {
+            background-color: #0f172a;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Connect 4</h1>
+    <div id="status"><span class="turn-red">Red's Turn</span></div>
+    
+    <div id="board"></div>
+    
+    <button id="reset" onclick="resetGame()">Restart Game</button>
+
+    <script>
+        const ROWS = 6;
+        const COLS = 7;
+        let currentPlayer = 'red'; // 'red' or 'yellow'
+        let gameActive = true;
+        let boardState = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+
+        // Create the board UI
+        function createBoard() {
+            boardElement.innerHTML = '';
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    cell.addEventListener('click', () => handleCellClick(c));
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        function handleCellClick(col) {
+            if (!gameActive) return;
+
+            // Find the lowest available row in the selected column
+            let targetRow = -1;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (boardState[r][col] === null) {
+                    targetRow = r;
+                    break;
+                }
+            }
+
+            // If column is full, do nothing
+            if (targetRow === -1) return;
+
+            // Update state
+            boardState[targetRow][col] = currentPlayer;
+
+            // Update UI
+            const cellIndex = targetRow * COLS + col;
+            const cell = boardElement.children[cellIndex];
+            cell.classList.add(currentPlayer);
+
+            // Check for a winner
+            if (checkWin(targetRow, col)) {
+                statusElement.innerHTML = `<span class="turn-${currentPlayer}">${currentPlayer.toUpperCase()} WINS! 🎉</span>`;
+                gameActive = false;
+                return;
+            }
+
+            // Check for a draw
+            if (boardState.flat().every(cell => cell !== null)) {
+                statusElement.innerHTML = "It's a Draw! 🤝";
+                gameActive = false;
+                return;
+            }
+
+            // Switch players
+            currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
+            statusElement.innerHTML = `<span class="turn-${currentPlayer}">${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s Turn</span>`;
+        }
+
+        function checkWin(r, c) {
+            return checkDirection(r, c, 0, 1) ||  // Horizontal
+                   checkDirection(r, c, 1, 0) ||  // Vertical
+                   checkDirection(r, c, 1, 1) ||  // Diagonal down-right
+                   checkDirection(r, c, 1, -1);   // Diagonal up-right
+        }
+
+        function checkDirection(r, c, dr, dc) {
+            const player = boardState[r][c];
+            let count = 1;
+
+            // Check forward direction
+            let i = 1;
+            while (r + i*dr >= 0 && r + i*dr < ROWS && c + i*dc >= 0 && c + i*dc < COLS && boardState[r + i*dr][c + i*dc] === player) {
+                count++;
+                i++;
+            }
+
+            // Check backward direction
+            i = 1;
+            while (r - i*dr >= 0 && r - i*dr < ROWS && c - i*dc >= 0 && c - i*dc < COLS && boardState[r - i*dr][c - i*dc] === player) {
+                count++;
+                i++;
+            }
+
+            return count >= 4;
+        }
+
+        function resetGame() {
+            boardState = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+            currentPlayer = 'red';
+            gameActive = true;
+            statusElement.innerHTML = `<span class="turn-red">Red's Turn</span>`;
+            createBoard();
+        }
+
+        // Initialize the game on load
+        createBoard();
+    </script>
+</body>
+</html>
